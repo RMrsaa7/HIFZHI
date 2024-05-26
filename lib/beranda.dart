@@ -1,58 +1,63 @@
 import 'package:flutter/material.dart';
-import 'package:iconsax/iconsax.dart';
-import 'package:line_icons/line_icons.dart';
+import 'menu/hafalan.dart';
+import 'menu/riwayah.dart';
+import 'menu/akun.dart';
+import 'menu/home.dart'; // Import halaman Beranda
+import 'bottom_navigation.dart';
 
-class BerandaScreen extends StatelessWidget {
+class BerandaScreen extends StatefulWidget {
+  @override
+  _BerandaScreenState createState() => _BerandaScreenState();
+}
+
+class _BerandaScreenState extends State<BerandaScreen> {
+  int currentIndex = 0;
+
+  final List<Widget> pages = [
+    HomePage(),
+    RiwayahPage(),
+    ProfilePage(),
+  ];
+
+  void _onItemTapped(int index) {
+    setState(() {
+      currentIndex = index;
+    });
+
+    if (index == 1) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => HafalanPage()),
+      ).then((_) => _onReturnToBeranda());
+    // } else if (index == 2) {
+    //   Navigator.push(
+    //     context,
+    //     MaterialPageRoute(builder: (context) => RiwayahPage()),
+    //   ).then((_) => _onReturnToBeranda());
+    // } else if (index == 3) {
+    //   Navigator.push(
+    //     context,
+    //     MaterialPageRoute(builder: (context) => ProfilePage()),
+    //   ).then((_) => _onReturnToBeranda());
+    }
+  }
+
+  void _onReturnToBeranda() {
+    setState(() {
+      currentIndex = 0;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-
-final size = MediaQuery.of(context).size;
-
     return Scaffold(
-      bottomNavigationBar: Container(
-        margin: EdgeInsets.all(17),
-        height: size.width * .150,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(.15),
-              blurRadius: 30,
-              offset: Offset(0, 10),
-            ),
-          ],
-          borderRadius: BorderRadius.circular(50),
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(50),
-          child: BottomNavigationBar(
-            type: BottomNavigationBarType.fixed,
-            items: [
-              BottomNavigationBarItem(
-                icon: Icon(Iconsax.home),
-                label: 'Beranda',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Iconsax.microphone),
-                label: 'Hafalan',
-              ),
-              BottomNavigationBarItem(
-                icon: Transform.scale(
-                  scale: 0.8,
-                  child: Icon(LineIcons.history, size: 32.0),
-                ),
-                label: 'Riwayat',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Iconsax.user),
-                label: 'Akun',
-              ),
-            ],
-          ),
-        ),
+      body: IndexedStack(
+        index: currentIndex,
+        children: pages,
       ),
-      body: Center(
-        child: Text('Content goes here'),
+      bottomNavigationBar: BottomNavigation(
+        currentIndex: currentIndex,
+        onTap: _onItemTapped,
       ),
     );
   }

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "621485503038",
+    "project_id": "hifzhi-app",
+    "storage_bucket": "hifzhi-app.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:621485503038:android:870bd98c66890a521b176f",
+        "android_client_info": {
+          "package_name": "com.example.hifzhi"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDSUnNboxF1tgk5KC4LiBlzVVAn3NUfzcY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

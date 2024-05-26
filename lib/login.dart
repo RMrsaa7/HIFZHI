@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'beranda.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class LoginScreen extends StatefulWidget {
   @override
@@ -104,10 +105,11 @@ class _LoginState extends State<LoginScreen> {
             ),
             Text(
               'Tampilkan Password',
-              style: TextStyle(
+              style: GoogleFonts.poppins(
+              textStyle: TextStyle(
                 color: Colors.white,
-                fontWeight: FontWeight.bold,
               ),
+            ),
             ),
           ],
         ),
@@ -127,9 +129,10 @@ class _LoginState extends State<LoginScreen> {
         ),
         child: Text(
           'Lupa Password?',
-          style: TextStyle(
+          style: GoogleFonts.poppins(
+          textStyle: TextStyle(
             color: Colors.white,
-            fontWeight: FontWeight.bold,
+          ),
           ),
         ),
       ),
@@ -189,19 +192,23 @@ class _LoginState extends State<LoginScreen> {
             children: [
               TextSpan(
                 text: 'Belum punya akun? ',
-                style: TextStyle(
+                style: GoogleFonts.poppins(
+                  textStyle: TextStyle(
                   color: Colors.white,
                   fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                ),
+                  fontWeight: FontWeight.w500
+          ),
+          ),
               ),
               TextSpan(
                 text: 'Daftar',
-                style: TextStyle(
+                style: GoogleFonts.poppins(
+                textStyle: TextStyle(
                     color: Colors.white,
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                     decoration: TextDecoration.underline),
+              ),
               ),
             ],
           ),

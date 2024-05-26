@@ -21,7 +21,7 @@ class _SplashScreenState extends State<SplashScreen>
     // Simpan context saat initState dipanggil
     _ctx = context;
 
-    Future.delayed(Duration(seconds: 3), () {
+    Future.delayed(Duration(seconds: 2), () {
       // Gunakan variabel context yang telah disimpan
       Navigator.of(_ctx).pushReplacement(MaterialPageRoute(builder: (_) => LoginScreen()));
     });
