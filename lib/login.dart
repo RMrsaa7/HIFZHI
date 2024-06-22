@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'beranda.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'register.dart'; // Pastikan Anda mengganti import dengan path yang benar untuk RegisterScreen
+import 'beranda.dart';
 
 class LoginScreen extends StatefulWidget {
   @override
@@ -9,14 +11,50 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginState extends State<LoginScreen> {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  TextEditingController emailController = TextEditingController();
+  TextEditingController passwordController = TextEditingController();
   bool _obscureText = true;
   bool _showPassword = false;
+  String _errorText = '';
 
   void _togglePasswordVisibility() {
     setState(() {
       _showPassword = !_showPassword;
       _obscureText = !_showPassword;
     });
+  }
+
+  Future<void> _signInWithEmailAndPassword() async {
+    try {
+      String email = emailController.text.trim();
+      String password = passwordController.text.trim();
+
+      if (email.isEmpty || password.isEmpty) {
+        setState(() {
+          _errorText = 'Email dan password harus diisi';
+        });
+        return;
+      }
+
+      await _auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => BerandaScreen()),
+      );
+    } catch (e) {
+      print('Error saat sign-in: $e');
+      String errorMessage = 'Terjadi kesalahan saat login';
+      if (e is FirebaseAuthException) {
+        errorMessage = e.message ?? 'Terjadi kesalahan saat login';
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Login gagal: $errorMessage')),
+      );
+    }
   }
 
   Widget buildEmail() {
@@ -35,13 +73,14 @@ class _LoginState extends State<LoginScreen> {
               ]),
           height: 60,
           child: TextField(
+            controller: emailController,
             keyboardType: TextInputType.emailAddress,
             style: TextStyle(color: Colors.black87),
             decoration: InputDecoration(
                 border: InputBorder.none,
                 contentPadding: EdgeInsets.only(top: 14),
-                prefixIcon: Icon(Icons.person, color: Color(0xff38A6A5)),
-                hintText: 'Username',
+                prefixIcon: Icon(Icons.email, color: Color(0xff38A6A5)),
+                hintText: 'Email',
                 hintStyle: TextStyle(color: Colors.black38, fontSize: 16)),
           ),
         )
@@ -49,7 +88,6 @@ class _LoginState extends State<LoginScreen> {
     );
   }
 
-//PASSWORD
   Widget buildPassword() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -65,22 +103,37 @@ class _LoginState extends State<LoginScreen> {
                     color: Colors.black26, blurRadius: 6, offset: Offset(0, 2))
               ]),
           height: 60,
-          child: TextField(
-            obscureText: _obscureText,
-            style: TextStyle(color: Colors.black87),
-            decoration: InputDecoration(
-                border: InputBorder.none,
-                contentPadding: EdgeInsets.only(top: 14),
-                prefixIcon: Icon(Icons.lock, color: Color(0xff38A6A5)),
-                hintText: 'Password',
-                hintStyle: TextStyle(color: Colors.black38)),
+          child: Stack(
+            children: [
+              TextField(
+                controller: passwordController,
+                obscureText: _obscureText,
+                style: TextStyle(color: Colors.black87),
+                decoration: InputDecoration(
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.only(top: 14),
+                    prefixIcon: Icon(Icons.lock, color: Color(0xff38A6A5)),
+                    hintText: 'Password',
+                    hintStyle: TextStyle(color: Colors.black38)),
+              ),
+              Positioned(
+                right: 0,
+                bottom: 10,
+                child: Visibility(
+                  visible: _errorText.isNotEmpty,
+                  child: Text(
+                    _errorText,
+                    style: TextStyle(color: Colors.red, fontSize: 12),
+                  ),
+                ),
+              ),
+            ],
           ),
         )
       ],
     );
   }
 
-  // SHOW PASSWORD CHECKBOX
   Widget buildShowPasswordCheckbox() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -106,10 +159,10 @@ class _LoginState extends State<LoginScreen> {
             Text(
               'Tampilkan Password',
               style: GoogleFonts.poppins(
-              textStyle: TextStyle(
-                color: Colors.white,
+                textStyle: TextStyle(
+                  color: Colors.white,
+                ),
               ),
-            ),
             ),
           ],
         ),
@@ -118,7 +171,6 @@ class _LoginState extends State<LoginScreen> {
     );
   }
 
-//FORGOT PASSWORD
   Widget buildForgotPassBtn() {
     return Container(
       alignment: Alignment.centerRight,
@@ -130,9 +182,9 @@ class _LoginState extends State<LoginScreen> {
         child: Text(
           'Lupa Password?',
           style: GoogleFonts.poppins(
-          textStyle: TextStyle(
-            color: Colors.white,
-          ),
+            textStyle: TextStyle(
+              color: Colors.white,
+            ),
           ),
         ),
       ),
@@ -149,19 +201,17 @@ class _LoginState extends State<LoginScreen> {
         child: Ink(
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [Color.fromARGB(255, 53, 170, 168), Color.fromARGB(255, 24, 145, 145)],
+              colors: [
+                Color.fromARGB(255, 53, 170, 168),
+                Color.fromARGB(255, 24, 145, 145)
+              ],
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
             ),
             borderRadius: BorderRadius.circular(15),
           ),
           child: InkWell(
-            onTap: (){
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => BerandaScreen()),
-                );
-            },
+            onTap: _signInWithEmailAndPassword,
             borderRadius: BorderRadius.circular(50),
             child: Container(
               height: 50,
@@ -184,7 +234,12 @@ class _LoginState extends State<LoginScreen> {
 
   Widget buildSignupBtn() {
     return GestureDetector(
-      onTap: () => print('Daftar pressed'),
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => RegisterScreen()),
+        );
+      },
       child: MouseRegion(
         cursor: SystemMouseCursors.click,
         child: RichText(
@@ -194,21 +249,19 @@ class _LoginState extends State<LoginScreen> {
                 text: 'Belum punya akun? ',
                 style: GoogleFonts.poppins(
                   textStyle: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500
-          ),
-          ),
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500),
+                ),
               ),
               TextSpan(
                 text: 'Daftar',
                 style: GoogleFonts.poppins(
-                textStyle: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    decoration: TextDecoration.underline),
-              ),
+                    textStyle: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        decoration: TextDecoration.underline)),
               ),
             ],
           ),
@@ -233,11 +286,11 @@ class _LoginState extends State<LoginScreen> {
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
                         colors: [
-                      Color(0xFFFFFFFF),
-                      Color(0xFFFFFFFF),
-                      Color(0xCC38A6A5),
-                      Color(0xCC38A6A5),
-                    ])),
+                          Color(0xFFFFFFFF),
+                          Color(0xFFFFFFFF),
+                          Color(0xCC38A6A5),
+                          Color(0xCC38A6A5),
+                        ])),
                 child: SingleChildScrollView(
                   physics: AlwaysScrollableScrollPhysics(),
                   padding: EdgeInsets.symmetric(horizontal: 25, vertical: 120),
@@ -253,7 +306,7 @@ class _LoginState extends State<LoginScreen> {
                         width: MediaQuery.of(context).size.width * 0.8,
                         child: buildEmail(),
                       ),
-                      SizedBox(height:10),
+                      SizedBox(height: 10),
                       Container(
                         width: MediaQuery.of(context).size.width * 0.8,
                         child: buildPassword(),
@@ -261,12 +314,12 @@ class _LoginState extends State<LoginScreen> {
                       SizedBox(height: 15),
                       Container(
                         width: MediaQuery.of(context).size.width * 0.8,
-                        child:    buildShowPasswordCheckbox(),
+                        child: buildShowPasswordCheckbox(),
                       ),
                       Container(
-                        width:MediaQuery.of(context).size.width * 0.8,
-                        child: buildLoginBtn()
-                        ),
+                        width: MediaQuery.of(context).size.width * 0.8,
+                        child: buildLoginBtn(),
+                      ),
                       buildSignupBtn(),
                     ],
                   ),
@@ -278,4 +331,11 @@ class _LoginState extends State<LoginScreen> {
       ),
     );
   }
+}
+
+void main() {
+  runApp(MaterialApp(
+    title: 'Login Screen',
+    home: LoginScreen(),
+  ));
 }

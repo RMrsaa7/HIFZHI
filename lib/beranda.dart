@@ -15,6 +15,7 @@ class _BerandaScreenState extends State<BerandaScreen> {
 
   final List<Widget> pages = [
     HomePage(),
+    HafalanPage(),
     RiwayahPage(),
     ProfilePage(),
   ];

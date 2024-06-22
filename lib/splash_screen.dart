@@ -9,21 +9,17 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen>
-    with SingleTickerProviderStateMixin {
-  late BuildContext _ctx; // Tambahkan variabel untuk menyimpan context
-
+class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersive);
 
-    // Simpan context saat initState dipanggil
-    _ctx = context;
+    print('SplashScreen initState called');
 
     Future.delayed(Duration(seconds: 2), () {
-      // Gunakan variabel context yang telah disimpan
-      Navigator.of(_ctx).pushReplacement(MaterialPageRoute(builder: (_) => LoginScreen()));
+      print('Navigating to LoginScreen');
+      Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => LoginScreen()));
     });
   }
 
@@ -35,6 +31,7 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
+    print('SplashScreen build called');
     return Scaffold(
       body: Container(
         height: double.infinity,
