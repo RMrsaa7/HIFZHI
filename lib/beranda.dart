@@ -24,37 +24,28 @@ class _BerandaScreenState extends State<BerandaScreen> {
     setState(() {
       currentIndex = index;
     });
-
-    if (index == 1) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => HafalanPage()),
-      ).then((_) => _onReturnToBeranda());
-    // } else if (index == 2) {
-    //   Navigator.push(
-    //     context,
-    //     MaterialPageRoute(builder: (context) => RiwayahPage()),
-    //   ).then((_) => _onReturnToBeranda());
-    // } else if (index == 3) {
-    //   Navigator.push(
-    //     context,
-    //     MaterialPageRoute(builder: (context) => ProfilePage()),
-    //   ).then((_) => _onReturnToBeranda());
-    }
   }
 
-  void _onReturnToBeranda() {
-    setState(() {
-      currentIndex = 0;
-    });
+  void _navigateToHafalanPage() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => HafalanPage()),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: Text('Beranda'),
+      ),
       body: IndexedStack(
         index: currentIndex,
         children: pages,
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _navigateToHafalanPage,
+        child: Icon(Icons.book),
       ),
       bottomNavigationBar: BottomNavigation(
         currentIndex: currentIndex,
