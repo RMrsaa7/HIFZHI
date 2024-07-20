@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'register.dart'; // Pastikan Anda mengganti import dengan path yang benar untuk RegisterScreen
-import 'beranda.dart';
+import 'beranda.dart'; // Sesuaikan dengan path yang benar
+import 'register.dart'; // Path untuk RegisterScreen
 
 class LoginScreen extends StatefulWidget {
   @override
@@ -37,14 +37,19 @@ class _LoginState extends State<LoginScreen> {
         return;
       }
 
-      await _auth.signInWithEmailAndPassword(
+      UserCredential userCredential = await _auth.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => BerandaScreen()),
-      );
+
+      User? user = userCredential.user;
+
+      if (user != null) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => BerandaScreen(user: user)),
+        );
+      }
     } catch (e) {
       print('Error saat sign-in: $e');
       String errorMessage = 'Terjadi kesalahan saat login';
