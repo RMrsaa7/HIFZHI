@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 class HafalanPage extends StatefulWidget {
+  final List setoranList;
+
+  HafalanPage({required this.setoranList});
+
   @override
   _HafalanPageState createState() => _HafalanPageState();
 }
@@ -8,6 +13,7 @@ class HafalanPage extends StatefulWidget {
 class _HafalanPageState extends State<HafalanPage> {
   TextEditingController _namaPesertaController = TextEditingController();
   TextEditingController _nomorRegistrasiController = TextEditingController(text: '12345');
+  DateTime? _selectedDate;
   String? _selectedSurat;
   String? _selectedSampaiSurat;
   String? _selectedAyatAwal;
@@ -16,6 +22,20 @@ class _HafalanPageState extends State<HafalanPage> {
   String? _selectedJenisSetoran;
   String? _selectedUstadzMusrif;
   String? _fileName;
+
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate ?? DateTime.now(),
+      firstDate: DateTime.now(),
+      lastDate: DateTime(2100),
+    );
+    if (picked != null && picked != _selectedDate) {
+      setState(() {
+        _selectedDate = picked;
+      });
+    }
+  }
 
   Widget _buildTextField({
     required String labelText,
@@ -82,37 +102,100 @@ class _HafalanPageState extends State<HafalanPage> {
             ],
           ),
           height: 60,
-          child: DropdownButton<String>(
-            isExpanded: true,
-            hint: Padding(
-              padding: EdgeInsets.only(left: 15),
-              child: Text(hint, style: TextStyle(color: Colors.black38, fontSize: 16)),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              isExpanded: true,
+              hint: Padding(
+                padding: EdgeInsets.only(left: 15),
+                child: Text(hint, style: TextStyle(color: Colors.black38, fontSize: 16)),
+              ),
+              value: value,
+              icon: Padding(
+                padding: EdgeInsets.only(right: 10),
+                child: Icon(Icons.arrow_drop_down, color: Color(0xff2DA2A1)),
+              ),
+              iconSize: 24,
+              elevation: 16,
+              style: TextStyle(color: Colors.black87),
+              onChanged: onChanged,
+              items: items.map<DropdownMenuItem<String>>((String value) {
+                return DropdownMenuItem<String>(
+                  value: value,
+                  child: Padding(
+                    padding: EdgeInsets.only(left: 15),
+                    child: Text(value),
+                  ),
+                );
+              }).toList(),
             ),
-            value: value,
-            icon: Padding(
-              padding: EdgeInsets.only(right: 10),
-              child: Icon(Icons.arrow_drop_down, color: Color(0xff2DA2A1)),
-            ),
-            iconSize: 24,
-            elevation: 16,
-            style: TextStyle(color: Colors.black87),
-            underline: Container(
-              height: 2,
-              color: Colors.transparent,
-            ),
-            onChanged: onChanged,
-            items: items.map<DropdownMenuItem<String>>((String value) {
-              return DropdownMenuItem<String>(
-                value: value,
-                child: Padding(
-                  padding: EdgeInsets.only(left: 15),
-                  child: Text(value),
-                ),
-              );
-            }).toList(),
           ),
         ),
       ],
+    );
+  }
+
+  void _showSubmitDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          content: Text('Apakah Anda yakin ingin menyetorkan hafalan ini?'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                if (_namaPesertaController.text.isEmpty ||
+                    _nomorRegistrasiController.text.isEmpty ||
+                    _selectedDate == null ||
+                    _selectedSurat == null ||
+                    _selectedSampaiSurat == null ||
+                    _selectedAyatAwal == null ||
+                    _selectedAyatAkhir == null ||
+                    _selectedJuz == null ||
+                    _selectedJenisSetoran == null ||
+                    _selectedUstadzMusrif == null ||
+                    _fileName == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Mohon lengkapi semua kolom')),
+                  );
+                  return;
+                }
+
+                final setoran = {
+                  'namaPeserta': _namaPesertaController.text,
+                  'nomorRegistrasi': _nomorRegistrasiController.text,
+                  'tanggalSetoran': DateFormat('dd MMM yyyy').format(_selectedDate!),
+                  'surat': _selectedSurat,
+                  'sampaiSurat': _selectedSampaiSurat,
+                  'ayatAwal': _selectedAyatAwal,
+                  'ayatAkhir': _selectedAyatAkhir,
+                  'juz': _selectedJuz,
+                  'jenisSetoran': _selectedJenisSetoran,
+                  'ustadzMusrif': _selectedUstadzMusrif,
+                  'fileName': _fileName,
+                };
+
+                // Anda dapat melakukan sesuatu dengan setoran di sini, seperti mengirimkannya ke server atau menambahkannya ke dalam list
+                widget.setoranList.add(setoran);
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Hafalan telah disetorkan!')),
+                );
+
+                Navigator.of(context).pop(); // Tutup dialog konfirmasi
+                Navigator.of(context).pop(); // Kembali ke halaman sebelumnya
+              },
+              child: Text('Ya'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text('Tidak'),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -122,42 +205,23 @@ class _HafalanPageState extends State<HafalanPage> {
       width: double.infinity,
       child: ElevatedButton(
         onPressed: () {
-          showDialog(
-            context: context,
-            builder: (BuildContext context) {
-              return AlertDialog(
-                content: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text('Setorkan Hafalan'),
-                    SizedBox(height: 20),
-                    TextButton(
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Hafalan telah disetorkan!')),
-                        );
-                      },
-                      child: Text(
-                        'Ya',
-                        style: TextStyle(color: Colors.black),
-                      ),
-                    ),
-                    SizedBox(height: 10),
-                    TextButton(
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                      },
-                      child: Text(
-                        'Tidak',
-                        style: TextStyle(color: Colors.black87),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          );
+          if (_namaPesertaController.text.isEmpty ||
+              _nomorRegistrasiController.text.isEmpty ||
+              _selectedDate == null ||
+              _selectedSurat == null ||
+              _selectedSampaiSurat == null ||
+              _selectedAyatAwal == null ||
+              _selectedAyatAkhir == null ||
+              _selectedJuz == null ||
+              _selectedJenisSetoran == null ||
+              _selectedUstadzMusrif == null ||
+              _fileName == null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Mohon lengkapi semua kolom')),
+            );
+            return;
+          }
+          _showSubmitDialog();
         },
         style: ButtonStyle(
           padding: MaterialStateProperty.all<EdgeInsets>(EdgeInsets.all(15)),
@@ -186,11 +250,11 @@ class _HafalanPageState extends State<HafalanPage> {
       appBar: AppBar(
         title: Text(
           'Halaman Setoran Hafalan',
-          style: TextStyle(color: Colors.white), // Set text color to white
+          style: TextStyle(color: Colors.white),
         ),
         backgroundColor: Color(0xff2DA2A1),
       ),
-      backgroundColor: Colors.white, // Set background color to white
+      backgroundColor: Colors.white,
       body: GestureDetector(
         onTap: () {
           FocusScope.of(context).unfocus();
@@ -207,6 +271,13 @@ class _HafalanPageState extends State<HafalanPage> {
                 textAlign: TextAlign.center,
               ),
               SizedBox(height: 20),
+              ListTile(
+                title: Text("Tanggal Setoran: ${_selectedDate?.toLocal().toString().split(' ')[0] ?? 'Belum dipilih'}"),
+                trailing: Icon(Icons.calendar_today),
+                onTap: () {
+                  _selectDate(context);
+                },
+              ),
               _buildTextField(
                 labelText: 'Nama Peserta',
                 controller: _namaPesertaController,
@@ -305,6 +376,40 @@ class _HafalanPageState extends State<HafalanPage> {
                   });
                 },
               ),
+              SizedBox(height: 20),
+              Container(
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.black26),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 15),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    ElevatedButton(
+                      onPressed: () {
+                        // Implementasikan logika pemilih file Anda di sini
+                        setState(() {
+                          _fileName = 'file_hafalan.mp3';
+                        });
+                      },
+                      style: ButtonStyle(
+                        backgroundColor: MaterialStateProperty.all<Color>(Color(0xff2DA2A1)),
+                      ),
+                      child: Text(
+                        'Pilih File',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                    SizedBox(width: 10),
+                    Text(
+                      _fileName ?? 'Belum ada file dipilih',
+                      style: TextStyle(fontSize: 16),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(height: 20),
               _buildSubmitButton(),
             ],
           ),
