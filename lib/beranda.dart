@@ -17,7 +17,7 @@ class _BerandaScreenState extends State<BerandaScreen> {
     HomePage(),
     HafalanPage(),
     RiwayahPage(),
-    ProfilePage(),
+    AkunPage(),
   ];
 
   void _onItemTapped(int index) {
@@ -36,9 +36,6 @@ class _BerandaScreenState extends State<BerandaScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Beranda'),
-      ),
       body: IndexedStack(
         index: currentIndex,
         children: pages,

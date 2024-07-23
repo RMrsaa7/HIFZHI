@@ -1,4 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'dart:io';
+
+void main() {
+  runApp(MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: HafalanPage(),
+    );
+  }
+}
 
 class HafalanPage extends StatefulWidget {
   @override
@@ -7,15 +24,50 @@ class HafalanPage extends StatefulWidget {
 
 class _HafalanPageState extends State<HafalanPage> {
   TextEditingController _namaPesertaController = TextEditingController();
-  TextEditingController _nomorRegistrasiController = TextEditingController(text: '12345');
+  TextEditingController _nomorRegistrasiController =
+      TextEditingController(text: '12345');
+  TextEditingController _ayatAwalController = TextEditingController();
+  TextEditingController _ayatAkhirController = TextEditingController();
   String? _selectedSurat;
   String? _selectedSampaiSurat;
-  String? _selectedAyatAwal;
-  String? _selectedAyatAkhir;
   String? _selectedJuz;
   String? _selectedJenisSetoran;
-  String? _selectedUstadzMusrif;
+  List<String> _suratList = [];
   String? _fileName;
+  PlatformFile? _selectedFile;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchSurat();
+  }
+
+  Future<void> _fetchSurat() async {
+    final response = await http
+        .get(Uri.parse('https://quran-api.santrikoding.com/api/surah'));
+    if (response.statusCode == 200) {
+      List data = json.decode(response.body);
+      setState(() {
+        _suratList = data
+            .map((surat) =>
+                "${surat['nomor']}. ${surat['nama_latin']}" as String)
+            .toList();
+      });
+    } else {
+      throw Exception('Failed to load surat');
+    }
+  }
+
+  Future<void> _pickFile() async {
+    FilePickerResult? result =
+        await FilePicker.platform.pickFiles(type: FileType.audio);
+    if (result != null) {
+      setState(() {
+        _selectedFile = result.files.single;
+        _fileName = result.files.single.name;
+      });
+    }
+  }
 
   Widget _buildTextField({
     required String labelText,
@@ -86,7 +138,8 @@ class _HafalanPageState extends State<HafalanPage> {
             isExpanded: true,
             hint: Padding(
               padding: EdgeInsets.only(left: 15),
-              child: Text(hint, style: TextStyle(color: Colors.black38, fontSize: 16)),
+              child: Text(hint,
+                  style: TextStyle(color: Colors.black38, fontSize: 16)),
             ),
             value: value,
             icon: Padding(
@@ -116,64 +169,117 @@ class _HafalanPageState extends State<HafalanPage> {
     );
   }
 
+  Widget _buildFilePicker() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(height: 20),
+        Text(
+          'LAMPIRKAN AUDIO HAFALAN',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+        ),
+        SizedBox(height: 10),
+        Container(
+          padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey),
+            borderRadius: BorderRadius.circular(5),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  _selectedFile != null
+                      ? _selectedFile!.name
+                      : 'Tidak ada file yang dipilih',
+                  style: TextStyle(fontSize: 14),
+                ),
+              ),
+              ElevatedButton(
+                onPressed: _pickFile,
+                child: Text('Pilih File'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Color(0xff2DA2A1),
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _submitHafalan() async {
+    if (_selectedFile == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Harap pilih file audio terlebih dahulu')),
+      );
+      return;
+    }
+
+    // Misalkan URL endpoint API untuk mengunggah hafalan
+    final url = Uri.parse('https://api.example.com/upload');
+
+    // Buat request multipart
+    var request = http.MultipartRequest('POST', url)
+      ..fields['nama_peserta'] = _namaPesertaController.text
+      ..fields['nomor_registrasi'] = _nomorRegistrasiController.text
+      ..fields['surat'] = _selectedSurat ?? ''
+      ..fields['sampai_surat'] = _selectedSampaiSurat ?? ''
+      ..fields['ayat_awal'] = _ayatAwalController.text
+      ..fields['ayat_akhir'] = _ayatAkhirController.text
+      ..fields['juz'] = _selectedJuz ?? ''
+      ..fields['jenis_setoran'] = _selectedJenisSetoran ?? '';
+
+    if (_selectedFile != null) {
+      request.files.add(
+        http.MultipartFile(
+          'file',
+          File(_selectedFile!.path!).readAsBytes().asStream(),
+          File(_selectedFile!.path!).lengthSync(),
+          filename: _selectedFile!.name,
+        ),
+      );
+    }
+
+    try {
+      var response = await request.send();
+      if (response.statusCode == 200) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Hafalan telah disetorkan!')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal mengunggah hafalan')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Terjadi kesalahan: $e')),
+      );
+    }
+  }
+
   Widget _buildSubmitButton() {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 10, vertical: 25),
       width: double.infinity,
       child: ElevatedButton(
-        onPressed: () {
-          showDialog(
-            context: context,
-            builder: (BuildContext context) {
-              return AlertDialog(
-                content: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text('Setorkan Hafalan'),
-                    SizedBox(height: 20),
-                    TextButton(
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Hafalan telah disetorkan!')),
-                        );
-                      },
-                      child: Text(
-                        'Ya',
-                        style: TextStyle(color: Colors.black),
-                      ),
-                    ),
-                    SizedBox(height: 10),
-                    TextButton(
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                      },
-                      child: Text(
-                        'Tidak',
-                        style: TextStyle(color: Colors.black87),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          );
-        },
-        style: ButtonStyle(
-          padding: MaterialStateProperty.all<EdgeInsets>(EdgeInsets.all(15)),
-          shape: MaterialStateProperty.all<RoundedRectangleBorder>(
-            RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
+        onPressed: _submitHafalan,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Color(0xff2DA2A1),
+          foregroundColor: Colors.white,
+          padding: EdgeInsets.all(15),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
           ),
-          backgroundColor: MaterialStateProperty.all<Color>(Color(0xff2DA2A1)),
         ),
         child: Text(
           'Setorkan Hafalan',
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
-            color: Colors.white,
           ),
         ),
       ),
@@ -190,23 +296,13 @@ class _HafalanPageState extends State<HafalanPage> {
         ),
         backgroundColor: Color(0xff2DA2A1),
       ),
-      backgroundColor: Colors.white, // Set background color to white
-      body: GestureDetector(
-        onTap: () {
-          FocusScope.of(context).unfocus();
-        },
-        child: SingleChildScrollView(
-          physics: AlwaysScrollableScrollPhysics(),
-          padding: EdgeInsets.symmetric(horizontal: 10, vertical: 25),
+      backgroundColor: Colors.white,
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(25.0),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: <Widget>[
-              Text(
-                'Silahkan isi kolom yang tersedia dengan benar dan tepat!',
-                style: TextStyle(fontSize: 16),
-                textAlign: TextAlign.center,
-              ),
-              SizedBox(height: 20),
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
               _buildTextField(
                 labelText: 'Nama Peserta',
                 controller: _namaPesertaController,
@@ -215,14 +311,14 @@ class _HafalanPageState extends State<HafalanPage> {
               _buildTextField(
                 labelText: 'Nomor Registrasi',
                 controller: _nomorRegistrasiController,
-                icon: Icons.confirmation_number,
+                icon: Icons.assignment,
               ),
               Row(
                 children: [
                   Expanded(
                     child: _buildDropdown(
                       hint: 'Surat',
-                      items: ['Al-Fatihah', 'Al-Baqarah', 'Ali Imran'],
+                      items: _suratList,
                       value: _selectedSurat,
                       onChanged: (String? newValue) {
                         setState(() {
@@ -235,7 +331,7 @@ class _HafalanPageState extends State<HafalanPage> {
                   Expanded(
                     child: _buildDropdown(
                       hint: 'Sampai Surat',
-                      items: ['An-Nisa', 'Al-Maidah', 'Al-Anam'],
+                      items: _suratList,
                       value: _selectedSampaiSurat,
                       onChanged: (String? newValue) {
                         setState(() {
@@ -249,35 +345,38 @@ class _HafalanPageState extends State<HafalanPage> {
               Row(
                 children: [
                   Expanded(
-                    child: _buildDropdown(
-                      hint: 'Ayat Awal',
-                      items: List.generate(286, (index) => 'Ayat ${index + 1}'),
-                      value: _selectedAyatAwal,
-                      onChanged: (String? newValue) {
-                        setState(() {
-                          _selectedAyatAwal = newValue;
-                        });
-                      },
+                    child: _buildTextField(
+                      labelText: 'Ayat Awal',
+                      controller: _ayatAwalController,
+                      icon: Icons.book,
                     ),
                   ),
                   SizedBox(width: 10),
                   Expanded(
-                    child: _buildDropdown(
-                      hint: 'Ayat Akhir',
-                      items: List.generate(286, (index) => 'Ayat ${index + 1}'),
-                      value: _selectedAyatAkhir,
-                      onChanged: (String? newValue) {
-                        setState(() {
-                          _selectedAyatAkhir = newValue;
-                        });
-                      },
+                    child: _buildTextField(
+                      labelText: 'Ayat Akhir',
+                      controller: _ayatAkhirController,
+                      icon: Icons.book,
                     ),
                   ),
                 ],
               ),
+              Padding(
+                padding: const EdgeInsets.only(top: 10, left: 2, right: 2),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    "Juz",
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.black54,
+                    ),
+                  ),
+                ),
+              ),
               _buildDropdown(
-                hint: 'Pilih Juz',
-                items: List.generate(30, (index) => 'Juz ${index + 1}'),
+                hint: 'Juz',
+                items: List.generate(30, (index) => (index + 1).toString()),
                 value: _selectedJuz,
                 onChanged: (String? newValue) {
                   setState(() {
@@ -285,9 +384,22 @@ class _HafalanPageState extends State<HafalanPage> {
                   });
                 },
               ),
+              Padding(
+                padding: const EdgeInsets.only(top: 20, left: 2, right: 2),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    "Jenis Setoran",
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.black54,
+                    ),
+                  ),
+                ),
+              ),
               _buildDropdown(
-                hint: 'Pilih Jenis Setoran',
-                items: ['Jenis Setoran 1', 'Jenis Setoran 2', 'Jenis Setoran 3'],
+                hint: 'Jenis Setoran',
+                items: ['Talaqqi (Bacaan)', 'Ziyadah (Hafalan)'],
                 value: _selectedJenisSetoran,
                 onChanged: (String? newValue) {
                   setState(() {
@@ -295,16 +407,49 @@ class _HafalanPageState extends State<HafalanPage> {
                   });
                 },
               ),
-              _buildDropdown(
-                hint: 'Pilih Ustadz/Ustadzah Musrif',
-                items: ['Ustadz 1', 'Ustadz 2', 'Ustadzah 1'],
-                value: _selectedUstadzMusrif,
-                onChanged: (String? newValue) {
-                  setState(() {
-                    _selectedUstadzMusrif = newValue;
-                  });
-                },
+              SizedBox(height: 20),
+              Container(
+                padding: EdgeInsets.all(15),
+                decoration: BoxDecoration(
+                  color: Color(0xffFFEB3B),
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black26,
+                      blurRadius: 6,
+                      offset: Offset(0, 2),
+                    )
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'PERHATIAN..!!',
+                      style:
+                          TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    ),
+                    SizedBox(height: 10),
+                    Text(
+                      '1. Pastikan file yang akan Anda upload merupakan rekaman setoran yang benar dan dapat diputar dengan jelas.',
+                      style: TextStyle(fontSize: 14),
+                    ),
+                    SizedBox(height: 10),
+                    Text(
+                      '2. Buat nama file sesuai yang di setorkan untuk memudahkan proses upload.\nContoh: Al Baqarah 1-5, Al Baqarah 6-10',
+                      style: TextStyle(fontSize: 14),
+                    ),
+                    SizedBox(height: 10),
+                    Text(
+                      '3. Pastikan file rekaman yang diupload tertulis extensionnya dengan jelas.\nContoh Benar: Al Baqarah 1-5.mp3\nContoh Salah: Al Baqarah 1-5',
+                      style: TextStyle(fontSize: 14),
+                    ),
+                  ],
+                ),
               ),
+              SizedBox(height: 5),
+              _buildFilePicker(),
+              SizedBox(height: 20),
               _buildSubmitButton(),
             ],
           ),
