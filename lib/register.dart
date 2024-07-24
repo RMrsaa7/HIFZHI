@@ -12,7 +12,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   TextEditingController emailController = TextEditingController();
   TextEditingController passwordController = TextEditingController();
   TextEditingController usernameController = TextEditingController();
-  final AuthService _authService = AuthService(FirebaseAuth.instance);
+  final AuthService _authService = AuthService(FirebaseAuth.instance, FirebaseFirestore.instance);
 
   bool _obscureText = true;
   bool _showPassword = false;
@@ -103,17 +103,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
           String password = passwordController.text.trim();
           String username = usernameController.text.trim();
 
-          String result = await _authService.signUp(email, password, 'user', username);
+          String result = await _authService.signUp(email, password, username);
           if (result == "Signed Up") {
             print('User registered: $username');
-            await FirebaseFirestore.instance
-                .collection('users')
-                .doc(username)
-                .set({
-              'email': email,
-              'username': username,
-              'role': 'user',
-            });
             await _showSuccessDialog(); // Show success dialog after saving data
           } else {
             print('Registration failed: $result');

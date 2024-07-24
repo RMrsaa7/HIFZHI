@@ -1,40 +1,45 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AuthService {
-  final FirebaseAuth _auth;
+  final FirebaseAuth _firebaseAuth;
+  final FirebaseFirestore _firestore;
 
-  AuthService(this._auth);
+  AuthService(this._firebaseAuth, this._firestore);
 
-  Stream<User?> get authStateChanges => _auth.idTokenChanges();
-
-  Future<String> login(String email, String password) async {
+  Future<String> signUp(String email, String password, String username) async {
     try {
-      await _auth.signInWithEmailAndPassword(email: email, password: password);
-      return "Logged In";
+      UserCredential userCredential = await _firebaseAuth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      // Menentukan role berdasarkan email
+      String role = (email == 'rdmarissalestari@gmail.com') ? 'admin' : 'user';
+
+      // Menambahkan data pengguna ke Firestore
+      await _firestore.collection('users').doc(userCredential.user!.uid).set({
+        'email': email,
+        'role': role, // Mengatur role sebagai 'admin' atau 'user'
+        'username': username,
+      });
+
+      return "Signed Up";
     } catch (e) {
       return e.toString();
     }
   }
 
-  Future<String> signUp(String email, String password, String role, String username) async {
+  Future<User?> signIn(String email, String password) async {
     try {
-      await _auth.createUserWithEmailAndPassword(email: email, password: password).then((value) async {
-        User? user = _auth.currentUser;
-
-        if (user != null) {
-          await FirebaseFirestore.instance.collection("users").doc(user.uid).set({
-            'uid': user.uid,
-            'email': email,
-            'username': username,
-            'role': role
-          });
-        }
-      });
-      return "Signed Up";
+      UserCredential result = await _firebaseAuth.signInWithEmailAndPassword(email: email, password: password);
+      return result.user;
     } catch (e) {
-      print(e);
-      return e.toString();
+      return null;
     }
+  }
+
+  Future<void> signOut() async {
+    await _firebaseAuth.signOut();
   }
 }

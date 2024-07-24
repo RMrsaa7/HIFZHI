@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../ubah_password.dart';
 import '../detail_data.dart';
 import '../kebijakan_privasi.dart';
@@ -7,20 +8,44 @@ import '../syarat_ketentuan.dart';
 import '../saran_masukan.dart';
 import '../login.dart';
 
-class AkunPage extends StatelessWidget {
+class AkunPage extends StatefulWidget {
+  @override
+  _AkunPageState createState() => _AkunPageState();
+}
+
+class _AkunPageState extends State<AkunPage> {
+  User? user = FirebaseAuth.instance.currentUser;
+  String userName = 'User';
+
+  @override
+  void initState() {
+    super.initState();
+    _getUserName();
+  }
+
+  Future<void> _getUserName() async {
+    if (user != null) {
+      DocumentSnapshot userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user!.uid)
+          .get();
+      if (userDoc.exists) {
+        setState(() {
+          userName = userDoc['username'] ?? 'User';
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    User? user = FirebaseAuth.instance.currentUser;
-
     if (user == null) {
       // Jika tidak ada user yang login, navigasikan ke halaman login
       return LoginScreen();
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Akun'),
-      ),
+      
       backgroundColor: Colors.white,
       body: SingleChildScrollView(
         child: Column(
@@ -33,8 +58,8 @@ class AkunPage extends StatelessWidget {
                   height: MediaQuery.of(context).size.height / 3,
                   decoration: const BoxDecoration(
                     borderRadius: BorderRadius.only(
-                      bottomLeft: Radius.circular(15.5),
-                      bottomRight: Radius.circular(15.5),
+                      bottomLeft: Radius.circular(30),
+                      bottomRight: Radius.circular(30),
                     ),
                     gradient: LinearGradient(
                       colors: [
@@ -64,7 +89,7 @@ class AkunPage extends StatelessWidget {
                       ),
                       SizedBox(height: 5),
                       Text(
-                        (user.displayName ?? 'User').toUpperCase(),
+                        userName.toUpperCase(),
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 20,
@@ -73,7 +98,7 @@ class AkunPage extends StatelessWidget {
                       ),
                       SizedBox(height: 5),
                       Text(
-                        user.email ?? 'Email tidak tersedia',
+                        user?.email ?? 'Email tidak tersedia',
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 16,
