@@ -5,9 +5,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:io';
-import 'dart:convert'; 
+import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:flutter/foundation.dart'; // untuk kIsWeb
+import 'package:flutter/foundation.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 
 class HafalanPage extends StatefulWidget {
   @override
@@ -20,6 +22,7 @@ class _HafalanPageState extends State<HafalanPage> {
   TextEditingController _nomorRegistrasiController = TextEditingController(text: '17221020');
   TextEditingController _ayatAwalController = TextEditingController();
   TextEditingController _ayatAkhirController = TextEditingController();
+  TextEditingController _dateController = TextEditingController();
   String? _selectedSurat;
   String? _selectedSampaiSurat;
   String? _selectedJuz;
@@ -27,6 +30,7 @@ class _HafalanPageState extends State<HafalanPage> {
   List<String> _suratList = [];
   String? _fileName;
   PlatformFile? _selectedFile;
+  DateTime? selectedDate;
 
   @override
   void initState() {
@@ -57,7 +61,7 @@ class _HafalanPageState extends State<HafalanPage> {
         _suratList = data.map((surat) => "${surat['nomor']}. ${surat['nama_latin']}" as String).toList();
       });
     } else {
-      throw Exception('Failed to load surat');
+      throw Exception('Gagal memuat surat');
     }
   }
 
@@ -92,8 +96,37 @@ class _HafalanPageState extends State<HafalanPage> {
   Future<void> _submitHafalan() async {
     if (_selectedFile == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Harap pilih file audio terlebih dahulu')),
+        SnackBar(content: Text('Harap pilih file audio terlebih dahulu', style: GoogleFonts.poppins())),
       );
+      return;
+    }
+
+    if (selectedDate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Harap pilih tanggal setoran terlebih dahulu', style: GoogleFonts.poppins())),
+      );
+      return;
+    }
+
+    bool? confirm = await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Setorkan Hafalan'),
+        content: Text('Apakah Anda yakin ingin menyetorkan hafalan ini?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text('Tidak'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text('Ya'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) {
       return;
     }
 
@@ -111,15 +144,51 @@ class _HafalanPageState extends State<HafalanPage> {
         'juz': _selectedJuz ?? '',
         'jenis_setoran': _selectedJenisSetoran ?? '',
         'audio_url': audioUrl,
+        'tanggal_setoran': selectedDate,
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Hafalan telah disetorkan!')),
+        SnackBar(content: Text('Hafalan telah disetorkan!', style: GoogleFonts.poppins())),
       );
+
+      // Reset form setelah berhasil menyetor
+      _resetForm();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Terjadi kesalahan: $e')),
+        SnackBar(content: Text('Terjadi kesalahan: $e', style: GoogleFonts.poppins())),
       );
+    }
+  }
+
+  void _resetForm() {
+    setState(() {
+      _namaPesertaController.clear();
+      _nomorRegistrasiController.clear();
+      _ayatAwalController.clear();
+      _ayatAkhirController.clear();
+      _dateController.clear();
+      _selectedSurat = null;
+      _selectedSampaiSurat = null;
+      _selectedJuz = null;
+      _selectedJenisSetoran = null;
+      _fileName = null;
+      _selectedFile = null;
+      selectedDate = null;
+    });
+  }
+
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: selectedDate ?? DateTime.now(),
+      firstDate: DateTime.now(), // Prevent selecting past dates
+      lastDate: DateTime(2101),
+    );
+    if (picked != null && picked != selectedDate) {
+      setState(() {
+        selectedDate = picked;
+        _dateController.text = DateFormat('dd MMM yyyy').format(picked);
+      });
     }
   }
 
@@ -150,13 +219,13 @@ class _HafalanPageState extends State<HafalanPage> {
           child: TextField(
             controller: controller,
             obscureText: isPassword,
-            style: TextStyle(color: Colors.black87),
+            style: GoogleFonts.poppins(color: Colors.black87),
             decoration: InputDecoration(
               border: InputBorder.none,
               contentPadding: EdgeInsets.only(top: 14),
               prefixIcon: Icon(icon, color: Color(0xff2DA2A1)),
               hintText: labelText,
-              hintStyle: TextStyle(color: Colors.black38, fontSize: 16),
+              hintStyle: GoogleFonts.poppins(color: Colors.black38, fontSize: 16),
             ),
           ),
         ),
@@ -192,7 +261,7 @@ class _HafalanPageState extends State<HafalanPage> {
             isExpanded: true,
             hint: Padding(
               padding: EdgeInsets.only(left: 15),
-              child: Text(hint, style: TextStyle(color: Colors.black38, fontSize: 16)),
+              child: Text(hint, style: GoogleFonts.poppins(color: Colors.black38, fontSize: 16)),
             ),
             value: value,
             icon: Padding(
@@ -201,7 +270,7 @@ class _HafalanPageState extends State<HafalanPage> {
             ),
             iconSize: 24,
             elevation: 16,
-            style: TextStyle(color: Colors.black87),
+            style: GoogleFonts.poppins(color: Colors.black87),
             underline: Container(
               height: 2,
               color: Colors.transparent,
@@ -212,7 +281,7 @@ class _HafalanPageState extends State<HafalanPage> {
                 value: value,
                 child: Padding(
                   padding: EdgeInsets.only(left: 15),
-                  child: Text(value),
+                  child: Text(value, style: GoogleFonts.poppins()),
                 ),
               );
             }).toList(),
@@ -229,7 +298,7 @@ class _HafalanPageState extends State<HafalanPage> {
         SizedBox(height: 20),
         Text(
           'LAMPIRKAN AUDIO HAFALAN',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16),
         ),
         SizedBox(height: 10),
         Container(
@@ -243,18 +312,55 @@ class _HafalanPageState extends State<HafalanPage> {
               Expanded(
                 child: Text(
                   _selectedFile != null ? _selectedFile!.name : 'Tidak ada file yang dipilih',
-                  style: TextStyle(fontSize: 14),
+                  style: GoogleFonts.poppins(fontSize: 14),
                 ),
               ),
               ElevatedButton(
                 onPressed: _pickFile,
-                child: Text('Pilih File'),
+                child: Text('Pilih File', style: GoogleFonts.poppins()),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Color(0xff2DA2A1),
                   foregroundColor: Colors.white,
                 ),
               ),
             ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDatePicker() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(height: 10),
+        Container(
+          alignment: Alignment.centerLeft,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black26,
+                blurRadius: 6,
+                offset: Offset(0, 2),
+              )
+            ],
+          ),
+          height: 60,
+          child: TextField(
+            controller: _dateController,
+            readOnly: true,
+            style: GoogleFonts.poppins(color: Colors.black87),
+            decoration: InputDecoration(
+              border: InputBorder.none,
+              contentPadding: EdgeInsets.only(top: 14),
+              prefixIcon: Icon(Icons.date_range, color: Color(0xff2DA2A1)),
+              hintText: 'Tanggal Setoran',
+              hintStyle: GoogleFonts.poppins(color: Colors.black38, fontSize: 16),
+            ),
+            onTap: () => _selectDate(context),
           ),
         ),
       ],
@@ -277,7 +383,7 @@ class _HafalanPageState extends State<HafalanPage> {
         ),
         child: Text(
           'Setorkan Hafalan',
-          style: TextStyle(
+          style: GoogleFonts.poppins(
             fontSize: 16,
             fontWeight: FontWeight.bold,
           ),
@@ -289,16 +395,22 @@ class _HafalanPageState extends State<HafalanPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xfff5f5f5),
       appBar: AppBar(
-        title: Text('Form Setoran Hafalan'),
-        backgroundColor: Color(0xff2DA2A1),
+        title: Text(
+          'Form Setoran Hafalan',
+          style: GoogleFonts.poppins(
+            color: Colors.white,
+          ),
+        ),
+        centerTitle: true,
+        backgroundColor: Colors.teal,
       ),
       body: SingleChildScrollView(
         padding: EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
+            _buildDatePicker(),
             _buildTextField(
               labelText: 'Nama Peserta',
               controller: _namaPesertaController,

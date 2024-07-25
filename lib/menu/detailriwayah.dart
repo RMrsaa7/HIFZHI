@@ -48,9 +48,12 @@ class DetailRiwayahPage extends StatelessWidget {
       appBar: AppBar(
         title: Text(
           'Detail Riwayah',
-          style: GoogleFonts.poppins(),
+          style: GoogleFonts.poppins(
+            color: Colors.white,
+          ),
         ),
         centerTitle: true,
+        backgroundColor: Colors.teal,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -62,21 +65,14 @@ class DetailRiwayahPage extends StatelessWidget {
             buildDetailRow('Tanggal Dinilai', tanggalDinilai),
             buildDetailRow('Musyrif di Tempat Tinggal', musyrifDiTempatTinggal),
             SizedBox(height: 16),
-            Center(child: buildSectionTitle('Detail Setoran')),
+            buildSectionTitle('Detail Setoran'),
             buildDetailRow('Surat', surah),
             buildDetailRow('Ayat', ayat),
             buildDetailRow('Halaman', halaman),
             buildDetailRow('Juz', juz),
             buildDetailRow('Pilih Jenis Setoran', jenisSetoran),
             SizedBox(height: 16),
-            Center(child: buildSectionTitle('Detail Yang Disetorkan')),
-            buildDetailRow('Surat', surah),
-            buildDetailRow('Ayat', ayat),
-            buildDetailRow('Halaman', halaman),
-            buildDetailRow('Juz', juz),
-            buildDetailRow('Pilih Jenis Setoran', jenisSetoran),
-            SizedBox(height: 16),
-            Center(child: buildSectionTitle('PENILAIAN DARI MUSYRIF HIFZHI')),
+            buildSectionTitle('Penilaian dari Musyrif Hifzhi'),
             buildDetailRow('Nama Musyrif', namaMusyrif),
             buildRatingRow('Makhrojul Huruf', makhrojulHuruf),
             buildRatingRow('Hukum Tajwid', hukumTajwid),
@@ -86,7 +82,7 @@ class DetailRiwayahPage extends StatelessWidget {
             buildRatingRow('Kualitas Hafalan', kualitasHafalan),
             buildDetailRow('Status Hafalan', statusHafalan),
             SizedBox(height: 16),
-            Center(child: buildSectionTitle('FEEDBACK UNTUK PESERTA')),
+            buildSectionTitle('Feedback untuk Peserta'),
             buildDetailRow('Tulisan Feedback', feedback, isFeedback: true),
           ],
         ),
@@ -135,14 +131,13 @@ class DetailRiwayahPage extends StatelessWidget {
           Expanded(
             flex: 7,
             child: Row(
-              children: [
-                Icon(Icons.star, color: Colors.orange, size: 20),
-                SizedBox(width: 8),
-                Text(
-                  rating.toString(),
-                  style: GoogleFonts.poppins(),
-                ),
-              ],
+              children: List.generate(10, (index) {
+                return Icon(
+                  Icons.star,
+                  color: index < rating ? Colors.orange : Colors.grey,
+                  size: 20,
+                );
+              }),
             ),
           ),
         ],
@@ -153,7 +148,7 @@ class DetailRiwayahPage extends StatelessWidget {
   Widget buildSectionTitle(String title) {
     return Container(
       padding: EdgeInsets.all(8.0),
-      color: Colors.green,
+      color: Colors.teal,
       width: double.infinity,
       child: Center(
         child: Text(

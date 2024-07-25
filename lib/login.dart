@@ -275,9 +275,17 @@ class _LoginState extends State<LoginScreen> {
                               TextSpan(
                                 text: 'Daftar',
                                 style: TextStyle(
-                                  color: Color(0xff38A6A5),
+                                  color: Colors.white,
                                   fontSize: 14,
                                   fontWeight: FontWeight.bold,
+                                  decoration: TextDecoration.underline,
+                                  shadows: [
+                                    Shadow(
+                                      blurRadius: 10.0,
+                                      color: Colors.black26,
+                                      offset: Offset(2.0, 2.0),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
