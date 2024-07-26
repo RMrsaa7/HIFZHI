@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:file_picker/file_picker.dart';
+import 'dart:io';
 
 class UserDetailPage extends StatefulWidget {
   @override
@@ -14,6 +17,8 @@ class _UserDetailPageState extends State<UserDetailPage> {
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
   bool _isEditing = false;
+  File? _imageFile;
+  String _profileImageUrl = '';
 
   @override
   void initState() {
@@ -28,6 +33,7 @@ class _UserDetailPageState extends State<UserDetailPage> {
         _nameController.text = user.displayName ?? '';
         _emailController.text = user.email ?? '';
         _phoneController.text = user.phoneNumber ?? '';
+        _profileImageUrl = user.photoURL ?? '';
       });
 
       DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
@@ -44,7 +50,12 @@ class _UserDetailPageState extends State<UserDetailPage> {
       User? user = FirebaseAuth.instance.currentUser;
       if (user != null) {
         try {
-          await user.updateProfile(displayName: _nameController.text);
+          String? photoURL = user.photoURL;
+          if (_imageFile != null) {
+            photoURL = await _uploadProfileImage(_imageFile!);
+          }
+
+          await user.updateProfile(displayName: _nameController.text, photoURL: photoURL);
           await user.updateEmail(_emailController.text);
 
           await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
@@ -52,6 +63,7 @@ class _UserDetailPageState extends State<UserDetailPage> {
             'email': _emailController.text,
             'phone': _phoneController.text,
             'address': _addressController.text,
+            'photoURL': photoURL,
           }, SetOptions(merge: true));
 
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Data berhasil diperbarui')));
@@ -66,6 +78,34 @@ class _UserDetailPageState extends State<UserDetailPage> {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal memperbarui data: $e')));
         }
       }
+    }
+  }
+
+  Future<String?> _uploadProfileImage(File image) async {
+    try {
+      User? user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        Reference storageReference = FirebaseStorage.instance.ref().child('profile_images/${user.uid}');
+        UploadTask uploadTask = storageReference.putFile(image);
+        TaskSnapshot storageSnapshot = await uploadTask;
+        String downloadUrl = await storageSnapshot.ref.getDownloadURL();
+        return downloadUrl;
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal mengunggah gambar: $e')));
+      return null;
+    }
+  }
+
+  Future<void> _pickImage() async {
+    FilePickerResult? result = await FilePicker.platform.pickFiles(type: FileType.image);
+    if (result != null && result.files.single.path != null) {
+      setState(() {
+        _imageFile = File(result.files.single.path!);
+      });
+      print('Selected image path: ${_imageFile!.path}');
+    } else {
+      print('No image selected');
     }
   }
 
@@ -123,10 +163,11 @@ class _UserDetailPageState extends State<UserDetailPage> {
           Center(
             child: CircleAvatar(
               radius: 50,
-              backgroundImage: NetworkImage(
-                FirebaseAuth.instance.currentUser?.photoURL ?? '',
-              ),
+              backgroundImage: _getImageProvider(),
               backgroundColor: Colors.grey.shade200,
+              child: _profileImageUrl.isEmpty && _imageFile == null
+                  ? Icon(Icons.camera_alt, color: Colors.grey.shade800)
+                  : null,
             ),
           ),
           SizedBox(height: 20),
@@ -137,6 +178,16 @@ class _UserDetailPageState extends State<UserDetailPage> {
         ],
       ),
     );
+  }
+
+  ImageProvider<Object> _getImageProvider() {
+    if (_imageFile != null) {
+      return FileImage(_imageFile!);
+    } else if (_profileImageUrl.isNotEmpty) {
+      return NetworkImage(_profileImageUrl);
+    } else {
+      return AssetImage('assets/default_profile.png');
+    }
   }
 
   Widget _buildInfoField(String label, TextEditingController controller) {
@@ -177,6 +228,18 @@ class _UserDetailPageState extends State<UserDetailPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              GestureDetector(
+                onTap: _pickImage,
+                child: CircleAvatar(
+                  radius: 50,
+                  backgroundImage: _getImageProvider(),
+                  backgroundColor: Colors.grey.shade200,
+                  child: _profileImageUrl.isEmpty && _imageFile == null
+                      ? Icon(Icons.camera_alt, color: Colors.grey.shade800)
+                      : null,
+                ),
+              ),
+              SizedBox(height: 20),
               TextFormField(
                 controller: _nameController,
                 decoration: InputDecoration(labelText: 'Nama'),

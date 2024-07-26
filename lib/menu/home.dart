@@ -2,6 +2,7 @@ import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'detailkajian.dart';
 
 class HomePage extends StatefulWidget {
@@ -21,6 +22,27 @@ class _HomePageState extends State<HomePage> {
   int currentIndex = 0;
 
   User? user = FirebaseAuth.instance.currentUser;
+  String userName = 'User';
+
+  @override
+  void initState() {
+    super.initState();
+    _getUserName();
+  }
+
+  Future<void> _getUserName() async {
+    if (user != null) {
+      DocumentSnapshot userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user!.uid)
+          .get();
+      if (userDoc.exists) {
+        setState(() {
+          userName = userDoc['username'] ?? 'User';
+        });
+      }
+    }
+  }
 
   List<Map<String, String>> kajianList = [
     {
@@ -30,7 +52,6 @@ class _HomePageState extends State<HomePage> {
           "[Kajian MUSAWARAH] Kunci Cepat Kebahagiaan Dalam Al-Qur'an Bintaro, 5 November 2022 \n",
       "detail":
           "Bersama Ustad Adi Hidayat, membahas tentang pentingnya ilmu dan bagaimana Al-Qur'an memberikan panduan untuk mencapai kebahagiaan yang sejati dan cepat dalam kehidupan sehari-hari.",
-
     },
     {
       "image_path": 'assets/kajian2.jpg',
@@ -58,7 +79,7 @@ class _HomePageState extends State<HomePage> {
           // Tambahkan gambar di bagian paling belakang
           Positioned.fill(
             child: Image.asset(
-              'assets/Hero.png',  // Sesuaikan dengan path gambar yang benar
+              'assets/Hero.png', // Sesuaikan dengan path gambar yang benar
               fit: BoxFit.cover,
             ),
           ),
@@ -91,7 +112,7 @@ class _HomePageState extends State<HomePage> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Halo, ${user?.displayName ?? 'User'}',
+                                  'Halo, $userName',
                                   style: GoogleFonts.poppins(
                                     textStyle: TextStyle(
                                       fontSize: 14,
@@ -145,7 +166,7 @@ class _HomePageState extends State<HomePage> {
                     child: Stack(
                       children: [
                         Container(
-                                                    decoration: BoxDecoration(
+                          decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(10),
                             boxShadow: [
                               BoxShadow(
@@ -250,7 +271,9 @@ class _HomePageState extends State<HomePage> {
                       children: [
                         Text(
                           "27 Maret 2024 08:00 WIB",
-                          style: TextStyle(fontSize: 16, color: Color.fromARGB(255, 53, 170, 168)),
+                          style: TextStyle(
+                              fontSize: 16,
+                              color: Color.fromARGB(255, 53, 170, 168)),
                         ),
                         Text(
                           "Dari: Al-Fatihah: 1",
@@ -265,8 +288,7 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.only(
-                      top: 20, left: 17, right: 10),
+                  padding: const EdgeInsets.only(top: 20, left: 17, right: 10),
                   child: Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
@@ -368,4 +390,3 @@ void main() {
     home: HomePage(),
   ));
 }
-
