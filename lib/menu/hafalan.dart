@@ -5,9 +5,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:io';
-import 'dart:convert'; 
+import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:flutter/foundation.dart'; // untuk kIsWeb
+import 'package:flutter/foundation.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 
 class HafalanPage extends StatefulWidget {
   @override
@@ -20,6 +22,7 @@ class _HafalanPageState extends State<HafalanPage> {
   TextEditingController _nomorRegistrasiController = TextEditingController(text: '17221020');
   TextEditingController _ayatAwalController = TextEditingController();
   TextEditingController _ayatAkhirController = TextEditingController();
+  TextEditingController _dateController = TextEditingController();
   String? _selectedSurat;
   String? _selectedSampaiSurat;
   String? _selectedJuz;
@@ -27,6 +30,10 @@ class _HafalanPageState extends State<HafalanPage> {
   List<String> _suratList = [];
   String? _fileName;
   PlatformFile? _selectedFile;
+  DateTime? selectedDate;
+  double _uploadProgressStorage = 0.0;
+  bool _isUploading = false;
+  String? _audioUrl;
 
   @override
   void initState() {
@@ -57,7 +64,7 @@ class _HafalanPageState extends State<HafalanPage> {
         _suratList = data.map((surat) => "${surat['nomor']}. ${surat['nama_latin']}" as String).toList();
       });
     } else {
-      throw Exception('Failed to load surat');
+      throw Exception('Gagal memuat surat');
     }
   }
 
@@ -71,36 +78,95 @@ class _HafalanPageState extends State<HafalanPage> {
     }
   }
 
-  Future<String> _uploadFile(PlatformFile file) async {
-    String fileName = _fileName ?? DateTime.now().millisecondsSinceEpoch.toString();
-    Reference storageReference = FirebaseStorage.instance.ref().child('audio_hafalan/$fileName');
-
-    if (kIsWeb) {
-      // Menggunakan bytes untuk platform web
-      UploadTask uploadTask = storageReference.putData(file.bytes!);
-      TaskSnapshot snapshot = await uploadTask;
-      return await snapshot.ref.getDownloadURL();
-    } else {
-      // Menggunakan path untuk platform non-web
-      File fileToUpload = File(file.path!);
-      UploadTask uploadTask = storageReference.putFile(fileToUpload);
-      TaskSnapshot snapshot = await uploadTask;
-      return await snapshot.ref.getDownloadURL();
-    }
-  }
-
-  Future<void> _submitHafalan() async {
+  Future<void> _uploadFileToStorage() async {
     if (_selectedFile == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Harap pilih file audio terlebih dahulu')),
+        SnackBar(content: Text('Harap pilih file audio terlebih dahulu', style: GoogleFonts.poppins())),
       );
       return;
     }
 
-    try {
-      String audioUrl = await _uploadFile(_selectedFile!);
+    setState(() {
+      _isUploading = true;
+    });
 
-      // Simpan data ke Firestore
+    try {
+      String fileName = _fileName ?? DateTime.now().millisecondsSinceEpoch.toString();
+      Reference storageReference = FirebaseStorage.instance.ref().child('audio_hafalan/$fileName');
+
+      UploadTask uploadTask;
+      if (kIsWeb) {
+        uploadTask = storageReference.putData(_selectedFile!.bytes!);
+      } else {
+        File fileToUpload = File(_selectedFile!.path!);
+        uploadTask = storageReference.putFile(fileToUpload);
+      }
+
+      uploadTask.snapshotEvents.listen((TaskSnapshot snapshot) {
+        setState(() {
+          _uploadProgressStorage = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+        });
+      });
+
+      TaskSnapshot snapshot = await uploadTask;
+      String downloadUrl = await snapshot.ref.getDownloadURL();
+
+      setState(() {
+        _audioUrl = downloadUrl;
+        _isUploading = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('File berhasil diunggah! URL: $downloadUrl', style: GoogleFonts.poppins())),
+      );
+    } catch (e) {
+      setState(() {
+        _isUploading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Terjadi kesalahan: $e', style: GoogleFonts.poppins())),
+      );
+    }
+  }
+
+  Future<void> _submitHafalan() async {
+    if (_audioUrl == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Harap unggah file audio terlebih dahulu', style: GoogleFonts.poppins())),
+      );
+      return;
+    }
+
+    if (selectedDate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Harap pilih tanggal setoran terlebih dahulu', style: GoogleFonts.poppins())),
+      );
+      return;
+    }
+
+    bool? confirm = await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Setorkan Hafalan'),
+        content: Text('Apakah Anda yakin ingin menyetorkan hafalan ini?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text('Tidak'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text('Ya'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) {
+      return;
+    }
+
+    try {
       await FirebaseFirestore.instance.collection('hafalan').add({
         'nama_peserta': _namaPesertaController.text,
         'nomor_registrasi': _nomorRegistrasiController.text,
@@ -110,16 +176,53 @@ class _HafalanPageState extends State<HafalanPage> {
         'ayat_akhir': _ayatAkhirController.text,
         'juz': _selectedJuz ?? '',
         'jenis_setoran': _selectedJenisSetoran ?? '',
-        'audio_url': audioUrl,
+        'audio_url': _audioUrl,
+        'tanggal_setoran': selectedDate,
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Hafalan telah disetorkan!')),
+        SnackBar(content: Text('Hafalan telah disetorkan!', style: GoogleFonts.poppins())),
       );
+
+      _resetForm();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Terjadi kesalahan: $e')),
+        SnackBar(content: Text('Terjadi kesalahan: $e', style: GoogleFonts.poppins())),
       );
+    }
+  }
+
+  void _resetForm() {
+    setState(() {
+      _namaPesertaController.clear();
+      _nomorRegistrasiController.clear();
+      _ayatAwalController.clear();
+      _ayatAkhirController.clear();
+      _dateController.clear();
+      _selectedSurat = null;
+      _selectedSampaiSurat = null;
+      _selectedJuz = null;
+      _selectedJenisSetoran = null;
+      _fileName = null;
+      _selectedFile = null;
+      selectedDate = null;
+      _audioUrl = null;
+      _uploadProgressStorage = 0.0;
+    });
+  }
+
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: selectedDate ?? DateTime.now(),
+      firstDate: DateTime.now(),
+      lastDate: DateTime(2101),
+    );
+    if (picked != null && picked != selectedDate) {
+      setState(() {
+        selectedDate = picked;
+        _dateController.text = DateFormat('dd MMM yyyy').format(picked);
+      });
     }
   }
 
@@ -129,158 +232,80 @@ class _HafalanPageState extends State<HafalanPage> {
     required IconData icon,
     bool isPassword = false,
   }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(height: 10),
-        Container(
-          alignment: Alignment.centerLeft,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(10),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black26,
-                blurRadius: 6,
-                offset: Offset(0, 2),
-              )
-            ],
-          ),
-          height: 60,
-          child: TextField(
-            controller: controller,
-            obscureText: isPassword,
-            style: TextStyle(color: Colors.black87),
-            decoration: InputDecoration(
-              border: InputBorder.none,
-              contentPadding: EdgeInsets.only(top: 14),
-              prefixIcon: Icon(icon, color: Color(0xff2DA2A1)),
-              hintText: labelText,
-              hintStyle: TextStyle(color: Colors.black38, fontSize: 16),
-            ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black26,
+              blurRadius: 8,
+              offset: Offset(0, 4),
+            )
+          ],
+        ),
+        child: TextField(
+          controller: controller,
+          obscureText: isPassword,
+          style: GoogleFonts.poppins(color: Colors.black87),
+          decoration: InputDecoration(
+            border: InputBorder.none,
+            prefixIcon: Icon(icon, color: Color(0xff2DA2A1)),
+            contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+            labelText: labelText,
+            labelStyle: GoogleFonts.poppins(color: Color(0xff2DA2A1)),
           ),
         ),
-      ],
+      ),
     );
   }
 
   Widget _buildDropdown({
-    required String hint,
+    required String hintText,
+    required String? selectedValue,
     required List<String> items,
-    required String? value,
-    required Function(String?) onChanged,
+    required ValueChanged<String?> onChanged,
+    IconData? icon,
+    double iconPadding = 0,
   }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(height: 10),
-        Container(
-          alignment: Alignment.centerLeft,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(10),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black26,
-                blurRadius: 6,
-                offset: Offset(0, 2),
-              )
-            ],
-          ),
-          height: 60,
-          child: DropdownButton<String>(
-            isExpanded: true,
-            hint: Padding(
-              padding: EdgeInsets.only(left: 15),
-              child: Text(hint, style: TextStyle(color: Colors.black38, fontSize: 16)),
-            ),
-            value: value,
-            icon: Padding(
-              padding: EdgeInsets.only(right: 10),
-              child: Icon(Icons.arrow_drop_down, color: Color(0xff2DA2A1)),
-            ),
-            iconSize: 24,
-            elevation: 16,
-            style: TextStyle(color: Colors.black87),
-            underline: Container(
-              height: 2,
-              color: Colors.transparent,
-            ),
-            onChanged: onChanged,
-            items: items.map<DropdownMenuItem<String>>((String value) {
-              return DropdownMenuItem<String>(
-                value: value,
-                child: Padding(
-                  padding: EdgeInsets.only(left: 15),
-                  child: Text(value),
-                ),
-              );
-            }).toList(),
-          ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black26,
+              blurRadius: 8,
+              offset: Offset(0, 4),
+            )
+          ],
         ),
-      ],
-    );
-  }
-
-  Widget _buildFilePicker() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(height: 20),
-        Text(
-          'LAMPIRKAN AUDIO HAFALAN',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-        ),
-        SizedBox(height: 10),
-        Container(
-          padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey),
-            borderRadius: BorderRadius.circular(5),
+        child: DropdownButtonFormField<String>(
+          value: selectedValue,
+          icon: icon != null
+              ? Padding(
+                  padding: EdgeInsets.only(right: iconPadding),
+                  child: Icon(icon, color: Color(0xff2DA2A1)),
+                )
+              : null,
+          style: GoogleFonts.poppins(color: Colors.black87),
+          decoration: InputDecoration(
+            border: InputBorder.none,
+            contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+            hintText: hintText,
+            hintStyle: GoogleFonts.poppins(color: Color(0xff2DA2A1)),
           ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  _selectedFile != null ? _selectedFile!.name : 'Tidak ada file yang dipilih',
-                  style: TextStyle(fontSize: 14),
-                ),
-              ),
-              ElevatedButton(
-                onPressed: _pickFile,
-                child: Text('Pilih File'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Color(0xff2DA2A1),
-                  foregroundColor: Colors.white,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSubmitButton() {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 25),
-      width: double.infinity,
-      child: ElevatedButton(
-        onPressed: _submitHafalan,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Color(0xff2DA2A1),
-          foregroundColor: Colors.white,
-          padding: EdgeInsets.all(15),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-        ),
-        child: Text(
-          'Setorkan Hafalan',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
+          items: items.map((String value) {
+            return DropdownMenuItem<String>(
+              value: value,
+              child: Text(value),
+            );
+          }).toList(),
+          onChanged: onChanged,
         ),
       ),
     );
@@ -289,16 +314,15 @@ class _HafalanPageState extends State<HafalanPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xfff5f5f5),
+      backgroundColor: Color(0xff2DA2A1),
       appBar: AppBar(
-        title: Text('Form Setoran Hafalan'),
+        title: Text('Setor Hafalan', style: GoogleFonts.poppins(color: Colors.white)),
         backgroundColor: Color(0xff2DA2A1),
       ),
       body: SingleChildScrollView(
-        padding: EdgeInsets.all(20),
+        padding: EdgeInsets.all(16.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
+          children: [
             _buildTextField(
               labelText: 'Nama Peserta',
               controller: _namaPesertaController,
@@ -307,60 +331,136 @@ class _HafalanPageState extends State<HafalanPage> {
             _buildTextField(
               labelText: 'Nomor Registrasi',
               controller: _nomorRegistrasiController,
-              icon: Icons.assignment_ind,
-            ),
-            _buildDropdown(
-              hint: 'Pilih Surat',
-              items: _suratList,
-              value: _selectedSurat,
-              onChanged: (value) {
-                setState(() {
-                  _selectedSurat = value;
-                });
-              },
-            ),
-            _buildDropdown(
-              hint: 'Sampai Surat',
-              items: _suratList,
-              value: _selectedSampaiSurat,
-              onChanged: (value) {
-                setState(() {
-                  _selectedSampaiSurat = value;
-                });
-              },
-            ),
-            _buildTextField(
-              labelText: 'Ayat Awal',
-              controller: _ayatAwalController,
               icon: Icons.format_list_numbered,
             ),
-            _buildTextField(
-              labelText: 'Ayat Akhir',
-              controller: _ayatAkhirController,
-              icon: Icons.format_list_numbered,
+            InkWell(
+              onTap: () => _selectDate(context),
+              child: IgnorePointer(
+                child: _buildTextField(
+                  labelText: 'Tanggal Setoran',
+                  controller: _dateController,
+                  icon: Icons.date_range,
+                ),
+              ),
+            ),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildDropdown(
+                    hintText: 'Pilih Surat',
+                    selectedValue: _selectedSurat,
+                    items: _suratList,
+                    onChanged: (String? newValue) {
+                      setState(() {
+                        _selectedSurat = newValue;
+                      });
+                    },
+                  ),
+                ),
+                SizedBox(width: 10),
+                Expanded(
+                  child: _buildDropdown(
+                    hintText: 'Sampai Surat',
+                    selectedValue: _selectedSampaiSurat,
+                    items: _suratList,
+                    onChanged: (String? newValue) {
+                      setState(() {
+                        _selectedSampaiSurat = newValue;
+                      });
+                    },
+                  ),
+                ),
+              ],
+            ),
+            
+            Row(
+              children: [
+                Expanded(
+                  child: _buildTextField(
+                    labelText: 'Ayat Awal',
+                    controller: _ayatAwalController,
+                    icon: Icons.format_list_numbered,
+                  ),
+                ),
+                SizedBox(width: 10),
+                Expanded(
+                  child: _buildTextField(
+                    labelText: 'Ayat Akhir',
+                    controller: _ayatAkhirController,
+                    icon: Icons.format_list_numbered,
+                  ),
+                ),
+              ],
             ),
             _buildDropdown(
-              hint: 'Pilih Juz',
-              items: List<String>.generate(30, (index) => 'Juz ${index + 1}'),
-              value: _selectedJuz,
-              onChanged: (value) {
+              hintText: 'Pilih Juz',
+              selectedValue: _selectedJuz,
+              items: List.generate(30, (index) => 'Juz ${index + 1}'),
+              onChanged: (String? newValue) {
                 setState(() {
-                  _selectedJuz = value;
+                  _selectedJuz = newValue;
                 });
               },
             ),
             _buildDropdown(
-              hint: 'Jenis Setoran',
-              items: ['Muraja\'ah', 'Setoran Baru'],
-              value: _selectedJenisSetoran,
-              onChanged: (value) {
+              hintText: 'Jenis Setoran',
+              selectedValue: _selectedJenisSetoran,
+              items: ['Murajaah', 'Ziyadah'],
+              onChanged: (String? newValue) {
                 setState(() {
-                  _selectedJenisSetoran = value;
+                  _selectedJenisSetoran = newValue;
                 });
               },
             ),
-            _buildFilePicker(),
-            _buildSubmitButton(),
+            SizedBox(height: 10),
+            ElevatedButton.icon(
+              onPressed: _pickFile,
+              icon: Icon(Icons.attach_file),
+              label: Text(
+                _fileName == null ? 'Pilih File Audio' : _fileName!,
+                style: GoogleFonts.poppins(),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: Color(0xff2DA2A1),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: EdgeInsets.symmetric(vertical: 18,  horizontal: 165),
+              ),
+            ),
+            SizedBox(height: 20),
+            _isUploading
+                ? CircularProgressIndicator(
+                    value: _uploadProgressStorage / 100,
+                    color: Colors.white,
+                  )
+                : ElevatedButton.icon(
+                    onPressed: _uploadFileToStorage,
+                    icon: Icon(Icons.cloud_upload),
+                    label: Text('Upload File', style: GoogleFonts.poppins()),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: Color(0xff2DA2A1),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: EdgeInsets.symmetric(vertical: 18,  horizontal: 175),
+                    ),
+                  ),
+            SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: _submitHafalan,
+              label: Text('Setorkan Hafalan', style: GoogleFonts.poppins()),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: Color(0xff2DA2A1),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: EdgeInsets.symmetric(vertical: 18, horizontal: 170),
+              ),
+            ),
           ],
         ),
       ),

@@ -3,10 +3,10 @@ import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'register.dart'; // Pastikan Anda mengganti import dengan path yang benar untuk RegisterScreen
+import 'register.dart';
 import 'beranda.dart';
-import 'package:hifzhi/admin_screen.dart'; // Import layar admin
-import 'package:hifzhi/services/auth_services.dart'; // Import auth service
+import 'package:hifzhi/admin_screen.dart'; 
+import 'package:hifzhi/services/auth_services.dart'; 
 
 class LoginScreen extends StatefulWidget {
   @override
@@ -20,7 +20,7 @@ class _LoginState extends State<LoginScreen> {
   bool _obscureText = true;
   bool _showPassword = false;
   String _errorText = '';
-  bool _loginError = false; // Variabel untuk menampilkan pesan kesalahan
+  bool _loginError = false; 
 
   void _togglePasswordVisibility() {
     setState(() {
@@ -252,7 +252,7 @@ class _LoginState extends State<LoginScreen> {
                           ),
                         ),
                       ),
-                      SizedBox(height: 10),
+                      SizedBox(height: 15),
                       GestureDetector(
                         onTap: () {
                           Navigator.push(
@@ -267,7 +267,7 @@ class _LoginState extends State<LoginScreen> {
                               TextSpan(
                                 text: 'Belum punya akun? ',
                                 style: TextStyle(
-                                  color: Colors.black87,
+                                  color: Colors.white,
                                   fontSize: 14,
                                   fontWeight: FontWeight.w400,
                                 ),
@@ -275,7 +275,7 @@ class _LoginState extends State<LoginScreen> {
                               TextSpan(
                                 text: 'Daftar',
                                 style: TextStyle(
-                                  color: Color(0xff38A6A5),
+                                  color: Colors.white,
                                   fontSize: 14,
                                   fontWeight: FontWeight.bold,
                                 ),

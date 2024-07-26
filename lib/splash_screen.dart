@@ -48,8 +48,8 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
           children: const [
             Image(
               image: AssetImage('assets/logo.png'), // Lokasi gambar
-              width: 400, // Lebar gambar
-              height: 400, // Tinggi gambar
+              width: 250, // Lebar gambar
+              height: 250, // Tinggi gambar
               fit: BoxFit.contain,
             )
           ],
